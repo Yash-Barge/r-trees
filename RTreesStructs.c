@@ -12,22 +12,26 @@ enum typeOfNode {
     INTERNAL = 2,
 };
 
-struct rectangleCoordinates {
+typedef struct rectangle {
     int min[DIMS];
     int max[DIMS];
-};
+} rectangle;
+
+typedef struct identifier {
+    int id;
+} identifier;
 
 struct node {
     enum typeOfNode kind;     // LEAF or BRANCH
-    int count;          // number of rects
-    struct rectangleCoordinates rects[MAX_ENTRIES];
+    int count;          // number of rectangless
+    rectangle rects[MAX_ENTRIES];
+    identifier i[MAX_ENTRIES];
     struct node *children[MAX_ENTRIES];
-    
 };
 
-struct rtree {
+typedef struct rtree {
     int count;
     int height;
-    struct rectangleCoordinates rect;
+    struct rectangle rect;
     struct node *root; 
-};
+} rtree;
