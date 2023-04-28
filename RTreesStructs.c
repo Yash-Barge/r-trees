@@ -1,37 +1,33 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
-#define DIMS 2
-#define MAX_ENTRIES 4
-#define MIN_ENTRIES 2
+typedef struct coordinates{ // As all points are 2-D, we only need two coordinates, x and y
+    int x; // x coordinate of the point
+    int y; // y coordinate of the point
+} coordinates;
 
-enum typeOfNode {
-    LEAF = 1,
-    INTERNAL = 2,
-};
-
-typedef struct rectangle {
-    int min[DIMS];
-    int max[DIMS];
+typedef struct rectangle{
+    coordinates min; // Lower left coordinate of the rectangle 
+    coordinates max; // Upper right coordinate of the rectangle
 } rectangle;
 
-typedef struct identifier {
-    int id;
-} identifier;
+typedef struct entry{
+    rectangle *rect;
+    node* child;
+} entry;
 
-struct node {
-    enum typeOfNode kind;     // LEAF or BRANCH
-    int count;          // number of rectangless
-    rectangle rects[MAX_ENTRIES];
-    identifier i[MAX_ENTRIES];
-    struct node *children[MAX_ENTRIES];
-};
+typedef struct node{
+    int count; // Number of Entries
+    bool isLeaf;
+    entry **ArrayOfEntries;
+    entry *parent;
+    int index;
+} node;
 
-typedef struct rtree {
-    int count;
-    int height;
-    struct rectangle rect;
-    struct node *root; 
-} rtree;
+typedef struct rTree{
+    int maxNumberOfChildren; // maxNumberOfChildren = M
+    int minNumberOfChildren; // maxNumberOfChildren = m
+    entry *start; 
+    node *root; // Pointer to the root of the tree
+} rTree;
