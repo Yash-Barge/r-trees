@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include <limits.h>
+
+typedef struct node node;
+typedef struct entry entry;
 
 typedef struct coordinates { // As all points are 2-D, we only need two coordinates, x and y
     int x; // x coordinate of the point
@@ -12,9 +16,6 @@ typedef struct rectangle {
     coordinates min; // Lower left coordinate of the rectangle 
     coordinates max; // Upper right coordinate of the rectangle
 } rectangle;
-
-typedef struct node node;
-typedef struct entry entry;
 
 struct entry {
     rectangle *rect;
@@ -82,6 +83,30 @@ int getArea(rectangle* r1){
     return abs(area);
 }
 
+rectangle* getMBRofNode(node* n){
+    if(n->count == 0){
+        printf("\nWARNING: Number of Entries in the Node is 0\n");
+        printf("\nFunction Name: getMBRofNode\n");
+        return NULL;
+    }
+
+    int minx = INT_MAX, miny = INT_MAX, maxx = INT_MIN, maxy = INT_MIN;
+    for(int i=0 ; i<n->count ; i++){
+        minx = fmin(minx, n->ArrayOfEntries[i]->rect->min.x);
+        minx = fmin(minx, n->ArrayOfEntries[i]->rect->max.x);
+        maxx = fmax(minx, n->ArrayOfEntries[i]->rect->min.x);
+        maxx = fmax(minx, n->ArrayOfEntries[i]->rect->max.x);
+        miny = fmin(minx, n->ArrayOfEntries[i]->rect->min.y);
+        miny = fmin(minx, n->ArrayOfEntries[i]->rect->max.y);
+        maxy = fmax(minx, n->ArrayOfEntries[i]->rect->min.y);
+        maxy = fmax(minx, n->ArrayOfEntries[i]->rect->max.y);
+    }
+    coordinates* min = createCoordinates(minx, miny);
+    coordinates* max = createCoordinates(maxx, maxy);
+    rectangle* r = createRectangle(min, max);
+    return r;
+}
+
 rectangle* getMBR(rectangle* r1, rectangle* r2){
     int minx, miny, maxx, maxy;
 
@@ -108,6 +133,23 @@ int getIncreaseInArea(rectangle* r1, rectangle *r2){ // Increase in area of the 
 
     incr = ((maxx - minx)*(maxy - miny)) - getArea(r1);
     return incr;
+}
+
+void deleteEntry(node *n, int index) {
+    if (index >= n->count) {
+        printf("\nWARNING: Attempting to delete entry at out-of-bounds index!\n");
+        printf("Node entry count: %d\nIndex at attempted deletion: %d\n", n->count, index);
+        return;
+    }
+
+    for (int i = index + 1; i < n->count; i++) {
+        n->ArrayOfEntries[i - 1] = n->ArrayOfEntries[i];
+    }
+
+    n->ArrayOfEntries[n->count - 1] = NULL;
+    n->count--;
+
+    return;
 }
 
 // Adjust Tree (Already Written by VVD)
@@ -153,7 +195,7 @@ node* ChooseLeaf(entry* Entry,node* Node){
 void pickSeeds(node *n, int *indices) {
     int index_1 = -1, index_2 = -1, d = -1;
     const entry *entries = *(n->ArrayOfEntries);
-    
+
     for (int i = 0; i < n->count; i++) {
         for (int j = i+1; j < n->count; j++) {
             int wasted_area = getArea(getMBR(entries[i].rect, entries[j].rect)) - getArea(entries[i].rect) - getArea(entries[j].rect);
@@ -168,55 +210,130 @@ void pickSeeds(node *n, int *indices) {
 
     indices[0] = index_1;
     indices[1] = index_2;
-
+    
     return;
 }
 
 // Pick Next Function
 
-// Takes inputs of a pointer to a node, and 2 pointers to Rectangles, which are MBRs
+// Takes inputs of a pointer to a node (which is being split), and 2 groups (which it is being split into)
 // For each entry of in the ArrayOfEntries of the input node, check for which entry gives the minimum area 
 // difference when adding the rectangles to the MBRs 
+// It also takes a bool pointer input, which is set to true or false based on which group the entry needs to be added to
 
-int pickNext(node* n, rectangle* r1, rectangle* r2){
-    entry* e;
-    int incr1, incr2, minIncr = __INT_MAX__;
-    int area1, area2, minArea;
+int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
+    int minIncr = 0;
     int index = -1;
+    
+    rectangle* r1 = getMBRofNode(group1);
+    rectangle* r2 = getMBRofNode(group2);
 
-    for(int i=0 ; i< n->count ; i++){
-        e = n->ArrayOfEntries[i];
-
-        rectangle* r3 = getMBR(r1, e->rect);
-        area1 = getArea(r3); // get Area of MBR of r1 and e->rect
-        
-        rectangle* r4 = getMBR(r2, e->rect);
-        area2 = getArea(r4); // get Area of MBR of r2 and e->rect
+    for (int i = 0; i < n->count ; i++){
+        entry *e = n->ArrayOfEntries[i];
+        int incr1, incr2;
 
         incr1 = getIncreaseInArea(r1, e->rect); // Get the increase in area for adding e->rect to r1
         incr2 = getIncreaseInArea(r2, e->rect); // Get the increase in area for adding e->rect to r2
 
-        if(abs(incr1 - incr2) < minIncr){
+        if(abs(incr1 - incr2) >= minIncr){
             minIncr = abs(incr1 - incr2);
-            minArea = area1 + area2;
-            index = i;
-        } 
-        else if ((abs(incr1 - incr2) == minIncr) && (area1 + area2 < minArea)) {
-            minArea = area1 + area2;
-            index = i;
+            index = i;  
+            if (incr1 == incr2) {
+                if (getArea(r1) != getArea(r2)) {
+                    *firstGroup = (getArea(r1) < getArea(r2));
+                } 
+                else {
+                    *firstGroup = (group1->count < group2->count);
+                }
+            }
+            else {
+                *firstGroup = (incr1 < incr2);
+            }
         }
     }
     return index;
 }
 
 // Quadratic Split
+// Takes in a pointer to the parent rTree, pointer to node which is to be split, and an array of pointers to nodes of at least size 2
+// Does not return anything, but adds 2 pointers to the split_nodes parameter array
+void quadraticSplit(rTree *parent, node *n, node **split_nodes) {
+    // Guard clause
+    if (n->count < (parent->minNumberOfChildren * 2)) {
+        printf("\nWARNING: Cannot perform quadratic split!\n");
+        printf("Node does not have enough entries to split between 2 nodes and satisfy minimum number of children requirements!");
+        printf("Node entry count: %d\nMinimum number of children of rTree: %d\n", n->count, parent->minNumberOfChildren);
 
-void quadraticSplit(node *n, node **e) {
-    
+        return;
+    } else if (n->count > (parent->maxNumberOfChildren * 2)) {
+        printf("\nFATAL ERROR: Quadratic split\n");
+        printf("Node has more entries than can split between 2 nodes and satisfy maximum number of children requirements!");
+        printf("Node entry count: %d\nMaximum number of children of rTree: %d\n", n->count, parent->maxNumberOfChildren);
+
+        exit(1);
+    }
+
+    // Gets indices for seeds
+    int indices[2];
+    pickSeeds(n, indices);
+
+    for (int i = 0; i < 2; i++) {
+        // Initializes nodes
+        split_nodes[i] = createNode(n->isLeaf, NULL, 0);
+        split_nodes[i]->ArrayOfEntries = calloc(parent->maxNumberOfChildren, sizeof(node*));
+
+        // Seeds nodes
+        split_nodes[i]->ArrayOfEntries[0] = n->ArrayOfEntries[indices[i]];
+        split_nodes[i]->count++;
+    }
+
+    // Deletes seed entries from original node
+    deleteEntry(n, indices[0]);
+    deleteEntry(n, indices[1] - 1); // indices[1] > indices[0], and deleteEntry(n, indices[0]) shifted the required index to the left by 1
+
+    while (n->count > 0) {
+        if ((n->count + split_nodes[0]->count <= parent->minNumberOfChildren) || (split_nodes[1]->count >= parent->maxNumberOfChildren)) { // To satisfy minimum and maximum number of children requirement
+            for (int i = split_nodes[0]->count; n->count > 0; i++) {
+                split_nodes[0]->ArrayOfEntries[i] = n->ArrayOfEntries[0];
+                split_nodes[0]->count++;
+                deleteEntry(n, 0);
+            }
+        } else if ((n->count + split_nodes[1]->count <= parent->minNumberOfChildren) || (split_nodes[0]->count >= parent->maxNumberOfChildren)) { // To satisfy minimum and maximum number of children requirement
+            for (int i = split_nodes[1]->count; n->count > 0; i++) {
+                split_nodes[1]->ArrayOfEntries[i] = n->ArrayOfEntries[0];
+                split_nodes[1]->count++;
+                deleteEntry(n, 0);
+            }
+        } else {
+            bool firstGroup;
+            int index = pickNext(n, split_nodes[0], split_nodes[1], &firstGroup);
+            int node_num = firstGroup ? 0 : 1;
+
+            split_nodes[node_num]->ArrayOfEntries[split_nodes[node_num]->count] = n->ArrayOfEntries[index];
+            split_nodes[node_num]->count++;
+            deleteEntry(n, index);
+        }
+    }
+
+    // Terminates program if something goes wrong
+    if (split_nodes[0]->count < parent->minNumberOfChildren || split_nodes[1]->count < parent->minNumberOfChildren) {
+        printf("\nFATAL ERROR: Quadratic split\n");
+        printf("Split nodes do not have enough entries to satisfy minimum children requirements!\n");
+        printf("split_nodes[0]->count: %d\nsplit_nodes[1]->count: %d\nMinimum number of children for rTree: %d\n", split_nodes[0]->count, split_nodes[1]->count, parent->minNumberOfChildren);
+        printf("Exiting program...\n");
+        exit(1);
+    } else if (split_nodes[0]->count > parent->maxNumberOfChildren || split_nodes[1]->count > parent->maxNumberOfChildren) {
+        printf("\nFATAL ERROR: Quadratic split\n");
+        printf("Split nodes have too many entries to satisfy maximum children requirements!\n");
+        printf("split_nodes[0]->count: %d\nsplit_nodes[1]->count: %d\nMaximum number of children for rTree: %d\n", split_nodes[0]->count, split_nodes[1]->count, parent->maxNumberOfChildren);
+        printf("Exiting program...\n");
+        exit(1);
+    }
+    return;
 }
 
 // driver function
 
 int main(void) {
-    printf("Work it\n");
+    printf("%d", INT_MIN);
 }
