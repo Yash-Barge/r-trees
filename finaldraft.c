@@ -4,6 +4,7 @@
 #include <math.h>
 #include <limits.h>
 
+
 typedef struct node node;
 typedef struct entry entry;
 
@@ -48,15 +49,16 @@ node* ChooseLeaf(entry* Entry, node* root);
 void adjustTree(node* L, node* LL, node* root, rTree* ourTree);
 void quadraticSplit(rTree *parent, node *n, node **split_nodes);
 void increaseHeight(node* oldroot1, node* oldroot2, rTree* ourTree);
-int getArea(rectangle* r1);
+long long int getArea(rectangle* r1);
 rectangle* getMBRofNode(node* n);
 rectangle* getMBR(rectangle* r1, rectangle* r2);
-int getIncreaseInArea(rectangle* r1, rectangle *r2);
+long long int getIncreaseInArea(rectangle* r1, rectangle *r2);
 void deleteEntry(node *n, int index);
 void pickSeeds(node *n, int *indices);
 int pickNext(node* n, node* group1, node* group2, bool *firstGroup);
 void readData(char *fileName, rTree *tree);
 void preOrderTraversal(node *n);
+void freeNode(node *n);
 
 coordinates* createCoordinates(int x, int y){
     coordinates* c = malloc(sizeof(coordinates));
@@ -70,13 +72,12 @@ rectangle* createRectangle(coordinates *min, coordinates *max){
     rect->min.x = min->x;
     rect->min.y = min->y;
     rect->max.x = max->x;
-    rect->max.y = max->y;
+    rect->max.y = max->y;   
     return rect;
 }
 
 node* createNode(bool isLeaf, entry** arr, int index, node* parent, entry* parententry){
     node* n = malloc(sizeof(node));
-    if (n == NULL) printf("\n\nALERT: malloc failed!\n\n");
     n->ArrayOfEntries = arr;
     n->isLeaf = isLeaf;
     n->index = index;
@@ -90,6 +91,7 @@ entry* createEntry(rectangle* rect, node* child){
     entry* e = malloc(sizeof(entry));
     e->child = child;
     e->rect = rect;
+    if (child) child->parententry = e;
     return e;
 }
 
@@ -110,7 +112,7 @@ int main(void){
     readData("data1lakh.txt", myTree);
 
     // printf("\n");
-    // preOrderTraversal(myTree->root);
+    preOrderTraversal(myTree->root);
 
     return 0;
 }
@@ -121,11 +123,11 @@ void readData(char * fileName, rTree *tree){
     int x, y;
 
     while (fscanf(fp, "%d %d\n", &x, &y) != EOF) {
-        printf("\nInserting (%d, %d)\n", x, y);
+        // printf("\nInserting (%d, %d)\n", x, y);
         insert(createEntry(createRectangle(createCoordinates(x,y), createCoordinates(x,y)), NULL), tree);
-        printf("\n(%d, %d) successfully inserted!\n", x, y);
-        printf("\n");
-        preOrderTraversal(tree->root);
+        // printf("\n(%d, %d) successfully inserted!\n", x, y);
+        // printf("\n");
+        // preOrderTraversal(tree->root);
     }
 
     fclose(fp);
@@ -136,41 +138,65 @@ void readData(char * fileName, rTree *tree){
 void insert(entry* newval, rTree* ourTree){
     node* node_to_insert_in = ChooseLeaf(newval, ourTree->root);
 
-    printf("node_to_insert_in: %p\n", node_to_insert_in);
-    printf("newval: %p\n", newval);
+    // printf("node_to_insert_in: %p\n", node_to_insert_in);
+    // printf("newval: %p\n", newval);
     
     if (node_to_insert_in->count<ourTree->maxNumberOfChildren) {
         node_to_insert_in->ArrayOfEntries[node_to_insert_in->count]=newval;
         node_to_insert_in->count++;
         if (newval->child) newval->child->parent = node_to_insert_in;
-        printf("entries in node_to_insert_in: ");
-        for (int i = 0; i < node_to_insert_in->count; i++) printf("%p ", node_to_insert_in->ArrayOfEntries[i]);
-        printf("\n");
+        // printf("entries in node_to_insert_in: ");
+        // for (int i = 0; i < node_to_insert_in->count; i++) printf("%p ", node_to_insert_in->ArrayOfEntries[i]);
+        // printf("\n");
         adjustTree(node_to_insert_in, NULL, ourTree->root, ourTree);
     } else {
         node** split_nodes = calloc(2, sizeof(node*));
-        node_to_insert_in->ArrayOfEntries[node_to_insert_in->count]=newval;
+        node_to_insert_in->ArrayOfEntries[node_to_insert_in->count] = newval;
         node_to_insert_in->count++;
         if (newval->child) newval->child->parent = node_to_insert_in;
         quadraticSplit(ourTree, node_to_insert_in, split_nodes);
+
+        // printf("\nnode_to_insert_in parent_entry children BEFORE: ");
+        // if (node_to_insert_in->parent) {
+        //     for (int i = 0; i < node_to_insert_in->parent->count; i++) {
+        //         printf("%p ", node_to_insert_in->parent->ArrayOfEntries[i]->child);
+        //     }
+        // }
+        // printf("\n\n");
 
         if (node_to_insert_in != ourTree->root) node_to_insert_in->parententry->child=split_nodes[0];
         else ourTree->root = split_nodes[0];
         
         adjustTree(split_nodes[0], split_nodes[1], ourTree->root, ourTree);
 
+        // printf("parent_entry: %p\n", node_to_insert_in->parententry);
+
+        // printf("\nnode_to_insert_in: %p\n", node_to_insert_in);
+        // printf("node_to_insert_in parent_entry children AFTER: ");
+        if (node_to_insert_in->parent) {
+            for (int i = 0; i < node_to_insert_in->parent->count; i++) {
+                // printf("%p ", node_to_insert_in->parent->ArrayOfEntries[i]->child);
+                if (node_to_insert_in->parent->ArrayOfEntries[i]->child == node_to_insert_in) {
+                    printf("\nUH OH!\n");
+                    printf("parent_entry: %p\n", node_to_insert_in->parent->ArrayOfEntries[i]);
+                    exit(1);
+                }
+            }
+        }
+        // printf("\n");
+
         free(split_nodes);
-        // TODO: free node_to_insert
+        freeNode(node_to_insert_in);
     }
 
     return;
 }
 
 node* ChooseLeaf(entry* e, node* N){
-    printf("\nstart of chooseleaf\n");
-    printf("N: %p\n", N);
-    printf("N->isLeaf: %d\n", N->isLeaf);
-    printf("N->count: %d\n", N->count);
+    // printf("\nstart of chooseleaf\n");
+    // printf("N: %p\n", N);
+    // printf("N->isLeaf: %d\n", N->isLeaf);
+    // printf("N->count: %d\n", N->count);
 
     if (N->isLeaf) return N;
 
@@ -181,19 +207,19 @@ node* ChooseLeaf(entry* e, node* N){
     }
     
     int index = -1;
-    int minDiff = INT_MAX;
+    long long int minDiff = __LONG_LONG_MAX__;
 
     for (int i = 0; i < N->count; i++) {
-        printf("entry: %p\n", N->ArrayOfEntries[i]);
+        // printf("entry: %p\n", N->ArrayOfEntries[i]);
 
-        int diff = getIncreaseInArea(N->ArrayOfEntries[i]->rect, e->rect);
+        long long int diff = getIncreaseInArea(N->ArrayOfEntries[i]->rect, e->rect);
         
         if ((diff < minDiff) || ((diff == minDiff) && (getArea(N->ArrayOfEntries[i]->rect) < getArea(N->ArrayOfEntries[index]->rect)))) {
             minDiff = diff;
             index = i;
         }
 
-        printf("index: %d, diff: %d, minDiff: %d\n", index, diff, minDiff);
+        // printf("index: %d, diff: %d, minDiff: %d\n", index, diff, minDiff);
     }
 
     if (index == -1) {
@@ -202,7 +228,7 @@ node* ChooseLeaf(entry* e, node* N){
         exit(1);
     }
 
-    printf("final index: %d\n", index);
+    // printf("final index: %d\n", index);
 
     return ChooseLeaf(e, N->ArrayOfEntries[index]->child);
 }
@@ -213,18 +239,18 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
     node *N = L;
     node *NN = LL;
 
-    printf("root: %p\n", root);
-    printf("ourTree->root: %p\n", ourTree->root);
-    printf("root->children: ");
-    for (int i = 0; i < root->count; i++) printf("%p ", root->ArrayOfEntries[i]->child);
-    printf("\n");
-    printf("root->children->parententries: ");
-    for (int i = 0; i < root->count; i++) if (root->ArrayOfEntries[i]->child) printf("%p ", root->ArrayOfEntries[i]->child->parententry);
-    printf("\n");
+    // printf("root: %p\n", root);
+    // printf("ourTree->root: %p\n", ourTree->root);
+    // printf("root->children: ");
+    // for (int i = 0; i < root->count; i++) printf("%p ", root->ArrayOfEntries[i]->child);
+    // printf("\n");
+    // printf("root->children->parententries: ");
+    // for (int i = 0; i < root->count; i++) if (root->ArrayOfEntries[i]->child) printf("%p ", root->ArrayOfEntries[i]->child->parententry);
+    // printf("\n");
 
     while (N != ourTree->root){
-        printf("N: %p\n", N);
-        printf("split: %d\n", split);
+        // printf("N: %p\n", N);
+        // printf("split: %d\n", split);
         entry* parententry = N->parententry;
 
         // TODO: free parententry->rect
@@ -254,7 +280,7 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
                 if (old_parent != ourTree->root) N->parent->parententry->child = arrayofnodes[0]; // replacing N->parent
                 else ourTree->root = arrayofnodes[0];
 
-                // TODO: free old_parent
+                // freeNode(old_parent);
 
                 N = arrayofnodes[0];
                 NN = arrayofnodes[1];
@@ -274,8 +300,7 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
 }
 
 void quadraticSplit(rTree *parent, node *n, node **split_nodes) {
-    printf("quadratic split called\n");
-    printf("quad split start n: %p\n", n);
+    // printf("quadratic split called\n");
     // Guard clause
     if (n->count < (parent->minNumberOfChildren * 2)) {
         printf("\nWARNING: Cannot perform quadratic split!\n");
@@ -368,8 +393,15 @@ void quadraticSplit(rTree *parent, node *n, node **split_nodes) {
         }
     }
 
-    printf("end of quadratic split\n");
-    printf("quad split end n: %p\n", n);
+    // printf("split_nodes[0] entries child's parents: ");
+    // for (int i = 0; i < split_nodes[0]->count; i++) if (split_nodes[0]->ArrayOfEntries[i]->child) printf("%p ", split_nodes[0]->ArrayOfEntries[i]->child->parent);
+    // printf("\n");
+
+    // printf("split_nodes[1] entries child's parents: ");
+    // for (int i = 0; i < split_nodes[1]->count; i++) if (split_nodes[1]->ArrayOfEntries[i]->child) printf("%p ", split_nodes[1]->ArrayOfEntries[i]->child->parent);
+    // printf("\n");
+
+    // printf("end of quadratic split\n");
 
     return;
 }
@@ -377,25 +409,30 @@ void quadraticSplit(rTree *parent, node *n, node **split_nodes) {
 void increaseHeight(node* oldroot1, node* oldroot2, rTree* ourTree){
     node* newroot=createNode(false, NULL, 0, NULL, NULL);
     newroot->ArrayOfEntries=calloc(5, sizeof(node*));
-    newroot->ArrayOfEntries[0]=createEntry(NULL, NULL);
-    newroot->ArrayOfEntries[1]=createEntry(NULL, NULL);
-    newroot->ArrayOfEntries[0]->child=oldroot1;
-    newroot->ArrayOfEntries[1]->child=oldroot2;
+    newroot->ArrayOfEntries[0]=createEntry(getMBRofNode(oldroot1), oldroot1);
+    newroot->ArrayOfEntries[1]=createEntry(getMBRofNode(oldroot2), oldroot2);
+    // newroot->ArrayOfEntries[0]->child=oldroot1;
+    // newroot->ArrayOfEntries[1]->child=oldroot2;
     newroot->count=2;
-    newroot->ArrayOfEntries[0]->rect=getMBRofNode(oldroot1);
-    newroot->ArrayOfEntries[1]->rect=getMBRofNode(oldroot2);
+    // newroot->ArrayOfEntries[0]->rect=getMBRofNode(oldroot1);
+    // newroot->ArrayOfEntries[1]->rect=getMBRofNode(oldroot2);
     oldroot1->parententry=newroot->ArrayOfEntries[0];
     oldroot2->parententry=newroot->ArrayOfEntries[1];
     oldroot1->parent=newroot;
     oldroot2->parent=newroot;
     ourTree->root=newroot;
 
-    printf("\n\nnewroot: %p\n\n", newroot);
+    // printf("\n\nnewroot: %p\n\n", newroot);
+
+    return;
 }
 
-int getArea(rectangle* r1){
-    int area = (r1->max.x - r1->min.x) * (r1->max.y - r1->min.y);
-    return abs(area);
+long long int getArea(rectangle* r1){
+    long long int area = (1LL*r1->max.x - 1LL*r1->min.x) * (1LL*r1->max.y - 1LL*r1->min.y);
+    // printf("area: %lld\n", area);
+
+    if (area < 0) return -area;
+    return area;
 }
 
 rectangle* getMBRofNode(node* n){
@@ -437,8 +474,8 @@ rectangle* getMBR(rectangle* r1, rectangle* r2){
     return r;
 }
 
-int getIncreaseInArea(rectangle* r1, rectangle *r2){ // Increase in area of the MBR when rectangle r2 is added to r1
-    int incr;
+long long int getIncreaseInArea(rectangle* r1, rectangle *r2){ // Increase in area of the MBR when rectangle r2 is added to r1
+    long long int incr;
     int minx, miny, maxx, maxy;
 
     maxx = fmax(fmax(r1->max.x, r1->min.x), fmax(r2->max.x, r2->min.x));
@@ -446,8 +483,10 @@ int getIncreaseInArea(rectangle* r1, rectangle *r2){ // Increase in area of the 
     maxy = fmax(fmax(r1->max.y, r1->min.y), fmax(r2->max.y, r2->min.y));
     miny = fmin(fmin(r1->max.y, r1->min.y), fmin(r2->max.y, r2->min.y));
 
-    incr = ((maxx - minx)*(maxy - miny)) - getArea(r1);
-    return abs(incr);
+    incr = (1LL*(maxx - minx)*(maxy - miny)) - getArea(r1);
+    
+    if (incr < 0) return -incr;
+    return incr;
 }
 
 void deleteEntry(node *n, int index) {
@@ -471,11 +510,21 @@ void deleteEntry(node *n, int index) {
 // Takes in a pointer to a node and an array of integers of at least size 2
 // Returns nothing, but the array of integers will have the indices of both entries of the least efficient pair
 void pickSeeds(node *n, int *indices) {
-    int index_1 = -1, index_2 = -1, d = -1;
+    if (!(n->count)) {
+        printf("FATAL ERROR: pickSeeds\n");
+        printf("Node passed has no entries!\n");
+        printf("Exiting program...\n\n");
+        exit(1);
+    }
+
+    int index_1 = -1, index_2 = -1;
+    long long int d = -1;
 
     for (int i = 0; i < n->count; i++) {
         for (int j = i+1; j < n->count; j++) {
-            int wasted_area = getArea(getMBR(n->ArrayOfEntries[i]->rect, n->ArrayOfEntries[j]->rect)) - getArea(n->ArrayOfEntries[i]->rect) - getArea(n->ArrayOfEntries[j]->rect);
+            long long int wasted_area = getArea(getMBR(n->ArrayOfEntries[i]->rect, n->ArrayOfEntries[j]->rect)) - getArea(n->ArrayOfEntries[i]->rect) - getArea(n->ArrayOfEntries[j]->rect);
+
+            // printf("wasted_area: %d\n", wasted_area);
             
             if (wasted_area > d) {
                 d = wasted_area;
@@ -507,7 +556,7 @@ int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
 
     for (int i = 0; i < n->count ; i++){
         entry *e = n->ArrayOfEntries[i];
-        int incr1, incr2;
+        long long int incr1, incr2;
 
         incr1 = getIncreaseInArea(r1, e->rect); // Get the increase in area for adding e->rect to r1
         incr2 = getIncreaseInArea(r2, e->rect); // Get the increase in area for adding e->rect to r2
@@ -550,4 +599,17 @@ void preOrderTraversal(node* n) {
             preOrderTraversal(n->ArrayOfEntries[i]->child);
         }
     }
+}
+
+void freeNode(node *n) {
+    if (n->count) {
+        printf("WARNING: Freeing node with entries inside!\n");
+        for (int i = 0; i < n->count; i++) printf("n->ArrayOfEntries[i]: %p\n", n->ArrayOfEntries[i]);
+        exit(1);
+    }
+
+    free(n->ArrayOfEntries);
+    free(n);
+
+    return;
 }
