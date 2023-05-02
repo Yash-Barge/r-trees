@@ -4,7 +4,7 @@
 #include <math.h>
 #include <limits.h>
 
-
+int checkvar=0;
 typedef struct node node;
 typedef struct entry entry;
 
@@ -113,13 +113,12 @@ int main(void){
 
     // printf("\n");
     preOrderTraversal(myTree->root);
-
+    printf("\n\nNumber of external nodes: %d\n\n", checkvar);
     return 0;
 }
 
 void readData(char * fileName, rTree *tree){
     FILE * fp = fopen(fileName, "r");
-
     int x, y;
 
     while (fscanf(fp, "%d %d\n", &x, &y) != EOF) {
@@ -279,6 +278,10 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
 
                 if (old_parent != ourTree->root) N->parent->parententry->child = arrayofnodes[0]; // replacing N->parent
                 else ourTree->root = arrayofnodes[0];
+
+                // printf("old_parent: %p\n", old_parent);
+                // printf("old_parent->count: %d\n", old_parent->count);
+                // printf("N->parent: %p\n", N->parent);
 
                 // freeNode(old_parent);
 
@@ -548,7 +551,7 @@ void pickSeeds(node *n, int *indices) {
 // It also takes a bool pointer input, which is set to true or false based on which group the entry needs to be added to
 
 int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
-    int maxIncr = -1;
+    long long int maxIncr = -1;
     int index = -1;
     
     rectangle* r1 = getMBRofNode(group1);
@@ -561,8 +564,10 @@ int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
         incr1 = getIncreaseInArea(r1, e->rect); // Get the increase in area for adding e->rect to r1
         incr2 = getIncreaseInArea(r2, e->rect); // Get the increase in area for adding e->rect to r2
 
-        if(abs(incr1 - incr2) >= maxIncr){
-            maxIncr = abs(incr1 - incr2);
+        long long int incr_diff = incr1 - incr2 > 0 ? incr1 - incr2 : incr2 - incr1;
+
+        if(incr_diff >= maxIncr) {
+            maxIncr = incr_diff;
             index = i;
             if (incr1 == incr2) {
                 if (getArea(r1) != getArea(r2)) {
@@ -579,8 +584,8 @@ int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
     }
     return index;
 }
+
 void preOrderTraversal(node* n) {
-    
     if (n == NULL) {
         return;
     }
@@ -589,6 +594,7 @@ void preOrderTraversal(node* n) {
     if (n->isLeaf) {
         for (int i = 0; i < n->count; i++) {
             printf("External Node: Objects: (%d, %d)\n", n->ArrayOfEntries[i]->rect->min.x, n->ArrayOfEntries[i]->rect->min.y);
+            checkvar++;
         }
     } 
     
