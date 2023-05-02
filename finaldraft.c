@@ -111,7 +111,7 @@ int main(void){
     rTree* myTree=createRTree(4, 2, root);
     readData("data1lakh.txt", myTree);
 
-    // printf("\n");
+    printf("\n");
     preOrderTraversal(myTree->root);
     printf("\n\nNumber of external nodes: %d\n\n", checkvar);
     return 0;
@@ -172,16 +172,16 @@ void insert(entry* newval, rTree* ourTree){
 
         // printf("\nnode_to_insert_in: %p\n", node_to_insert_in);
         // printf("node_to_insert_in parent_entry children AFTER: ");
-        if (node_to_insert_in->parent) {
-            for (int i = 0; i < node_to_insert_in->parent->count; i++) {
-                // printf("%p ", node_to_insert_in->parent->ArrayOfEntries[i]->child);
-                if (node_to_insert_in->parent->ArrayOfEntries[i]->child == node_to_insert_in) {
-                    printf("\nUH OH!\n");
-                    printf("parent_entry: %p\n", node_to_insert_in->parent->ArrayOfEntries[i]);
-                    exit(1);
-                }
-            }
-        }
+        // if (node_to_insert_in->parent) {
+        //     for (int i = 0; i < node_to_insert_in->parent->count; i++) {
+        //         printf("%p\n", node_to_insert_in->parent->ArrayOfEntries[i]->child);
+        //         if (node_to_insert_in->parent->ArrayOfEntries[i]->child == node_to_insert_in) {
+        //             printf("\nUH OH!\n");
+        //             printf("parent_entry: %p\n", node_to_insert_in->parent->ArrayOfEntries[i]);
+        //             exit(1);
+        //         }
+        //     }
+        // }
         // printf("\n");
 
         free(split_nodes);
@@ -252,7 +252,7 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
         // printf("split: %d\n", split);
         entry* parententry = N->parententry;
 
-        // TODO: free parententry->rect
+        free(parententry->rect);
         parententry->rect = getMBRofNode(N);
         
         if (split) {
@@ -283,7 +283,23 @@ void adjustTree(node* L, node* LL, node* root, rTree* ourTree) {
                 // printf("old_parent->count: %d\n", old_parent->count);
                 // printf("N->parent: %p\n", N->parent);
 
-                // freeNode(old_parent);
+                freeNode(old_parent);
+
+                // printf("parent_entry: %p\n", node_to_insert_in->parententry);
+
+                // printf("\nnode_to_insert_in: %p\n", node_to_insert_in);
+                // printf("node_to_insert_in parent_entry children AFTER: ");
+                // if (old_parent->parent) {
+                //     for (int i = 0; i < old_parent->parent->count; i++) {
+                //         // printf("%p ", old_parent->parent->ArrayOfEntries[i]->child);
+                //         if (old_parent->parent->ArrayOfEntries[i]->child == old_parent) {
+                //             printf("\nUH OH!\n");
+                //             printf("parent_entry: %p\n", old_parent->parent->ArrayOfEntries[i]);
+                //             exit(1);
+                //         }
+                //     }
+                // }
+                // printf("\n");
 
                 N = arrayofnodes[0];
                 NN = arrayofnodes[1];
