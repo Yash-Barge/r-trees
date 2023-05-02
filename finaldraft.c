@@ -4,6 +4,9 @@
 #include <math.h>
 #include <limits.h>
 
+typedef struct node node;
+typedef struct entry entry;
+
 typedef struct coordinates{ // As all points are 2-D, we only need two coordinates, x and y
     int x; // x coordinate of the point
     int y; // y coordinate of the point
@@ -14,19 +17,19 @@ typedef struct rectangle{
     coordinates max; // Upper right coordinate of the rectangle
 } rectangle;
 
-typedef struct entry{
+struct entry{
     rectangle *rect;
     node* child;
-} entry;
+};
 
-typedef struct node{
+struct node{
     int count; // Number of Entries
     bool isLeaf;
     entry **ArrayOfEntries;
     int index;
     node* parent;
     entry* parententry;
-} node;
+};
 
 typedef struct rTree{
     int maxNumberOfChildren; // maxNumberOfChildren = M
@@ -36,7 +39,7 @@ typedef struct rTree{
 } rTree;
 
 coordinates* createCoordinates(int x, int y);
-rectangle* createRectangle(coordinates min, coordinates max);
+rectangle* createRectangle(coordinates *min, coordinates *max);
 node* createNode(bool isLeaf, entry** arr, int index, node* parent, entry* parententry);
 entry* createEntry(rectangle* rect, node* child);
 rTree* createRTree(int Max, int Min, node* root);
@@ -52,6 +55,7 @@ int getIncreaseInArea(rectangle* r1, rectangle *r2);
 void deleteEntry(node *n, int index);
 void pickSeeds(node *n, int *indices);
 int pickNext(node* n, node* group1, node* group2, bool *firstGroup);
+void readData(char *fileName, rTree *tree);
 
 coordinates* createCoordinates(int x, int y){
     coordinates* c = malloc(sizeof(coordinates));
@@ -60,12 +64,12 @@ coordinates* createCoordinates(int x, int y){
     return c;
 }
 
-rectangle* createRectangle(coordinates min, coordinates max){
+rectangle* createRectangle(coordinates *min, coordinates *max){
     rectangle* rect = malloc(sizeof(rectangle));
-    rect->min.x = min.x;
-    rect->min.y = min.y;
-    rect->max.x = max.x;
-    rect->max.y = max.y;
+    rect->min.x = min->x;
+    rect->min.y = min->y;
+    rect->max.x = max->x;
+    rect->max.y = max->y;
     return rect;
 }
 
