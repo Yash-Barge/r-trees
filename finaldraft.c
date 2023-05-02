@@ -381,11 +381,10 @@ void deleteEntry(node *n, int index) {
 // Returns nothing, but the array of integers will have the indices of both entries of the least efficient pair
 void pickSeeds(node *n, int *indices) {
     int index_1 = -1, index_2 = -1, d = -1;
-    const entry *entries = *(n->ArrayOfEntries);
 
     for (int i = 0; i < n->count; i++) {
         for (int j = i+1; j < n->count; j++) {
-            int wasted_area = getArea(getMBR(entries[i].rect, entries[j].rect)) - getArea(entries[i].rect) - getArea(entries[j].rect);
+            int wasted_area = getArea(getMBR(n->ArrayOfEntries[i]->rect, n->ArrayOfEntries[j]->rect)) - getArea(n->ArrayOfEntries[i]->rect) - getArea(n->ArrayOfEntries[j]->rect);
             
             if (wasted_area > d) {
                 d = wasted_area;
@@ -440,3 +439,4 @@ int pickNext(node* n, node* group1, node* group2, bool *firstGroup){
     }
     return index;
 }
+void preOrderTraversal(){}
